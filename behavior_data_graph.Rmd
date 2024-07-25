@@ -1,0 +1,73 @@
+---
+title: "Script used for graphing behavior data"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+##### This script will go through a csv file containing a DV of interest and:
+1. Plot the data as a bar graph
+2. Show individual points
+3. The points will vary depending on the Sex IV column in the csv file
+4. Note: the DV will need to be changed manually per graph
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+library(dplyr)
+#read in data file
+DATA = read.csv("NORT_PND22.csv", header = TRUE)
+
+shapes <-c(21, 24) # circle and triangle for female/male
+shapesPERGROUP <-shapes[as.factor(DATA$Sex)]
+
+DATA_summary <- DATA %>% # the names of the new data frame and the data frame to be summarised
+  group_by(Condition) %>%   # the grouping variable
+  summarise(mean = mean(Fam_DI),  # calculates the mean of each group
+            sd = sd(Fam_DI), # calculates the standard deviation of each group
+            n = n(),  # calculates the sample size per group
+            SE = sd(Fam_DI )/sqrt(n())) # calculates the standard error of each group
+
+DATAPlot <- ggplot(DATA_summary, aes(Condition , mean)) +
+  geom_col(width=0.45, colour="black", lwd=1.5) + aes(fill = Condition) +
+  
+  #fill with specific colors: light to dark
+  scale_fill_manual(values = c("#FFFFFF", "#BFBFBF", "#000000", "#474747"), guide=FALSE) +
+  
+  #plot standard error instead of sd
+  geom_errorbar(aes(ymin = mean - SE, ymax = mean + SE), width=0.2, lwd=1.5) +
+  geom_point(data = DATA, aes(x = Condition, y = Fam_DI, shape = shapesPERGROUP),
+             
+             #0.000005 for even layout of jitter
+             position=position_jitter(width=0.09,height=0),
+             #pch gives you different scatter types, 20 gives filled-in dots
+             col ="#808080", stroke=2,pch=shapesPERGROUP,
+             alpha=1,
+             #size gives different point sizes
+             size=2.5,
+             show.legend=TRUE)
+
+DATAPlot + labs(y = "Familiarization Trial DI %", x="") + theme_classic() +
+  #add graph title
+  ggtitle("Novel Object Recognition Test\n") +
+  theme(plot.title = element_text(hjust=0.5, size=18, face='bold'))+
+  theme(axis.title.x = element_text(face='bold',size=18,hjust=.5, margin = margin(b=0,t=10,r=0,l=0)),
+        axis.title.y = element_text(face='bold',size=18, color='black', margin = margin(b=0,t=0,r=10,l=0)),
+        axis.text.x = element_text(size=16,color='black', face='bold'),
+        axis.text.y = element_text(size=18,color='black', face='bold')) +
+  #change axes (ticks) thickness, length of ticks
+  theme(axis.line = element_line(size = 1.5), axis.ticks = element_line(colour = "black", size = 1.5), axis.ticks.length = unit(0.4, "cm")) +
+  #change size of graph
+  theme(aspect.ratio = 1/1.25) +
+  geom_hline(yintercept=50, linetype="dashed", size=1.25) +
+  # Make bars touch x-axis, and specify breaks between axis lines
+  scale_y_continuous(expand = c(0,0), breaks = seq(0, 100, 25) ) +
+  #change y-axis range
+  coord_cartesian(ylim = c(0, 100))
+
+# Save plot with ggsave, scale changes how big each element is, dpi = resolution
+#ggsave(file="Fam_DI_new.png", path = NULL,scale =3, width = 2.5, height = 1.9, units = "in", dpi = 600)
+
+
+```
